@@ -12,23 +12,25 @@ import skimage.io
 from PIL import Image
 import seaborn as sns
 from test import DANNAccuracy
-from DANN import FeatureExtractor, Classifier, Discriminator
+from DANN import *
 import torch.optim as optim
 from DA import DenoisingAutoencoder
+from util import *
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-extractor = FeatureExtractor().to(device)
-classifier = Classifier().to(device)
-discriminator = Discriminator().to(device)
-for p in extractor.parameters():
-    p.requires_grad = True
-for p in classifier.parameters():
-    p.requires_grad = True
-for p in discriminator.parameters():
-    p.requires_grad = True
 
 
 
 def DANNTrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, epochs):
+    extractor = ConvolutionalExtractor().to(device)
+    classifier = Classifier(3*28*28).to(device)
+    discriminator = Discriminator(3*28*28).to(device)
+    for p in extractor.parameters():
+        p.requires_grad = True
+    for p in classifier.parameters():
+        p.requires_grad = True
+    for p in discriminator.parameters():
+        p.requires_grad = True
+
     class_lossf= nn.NLLLoss().to(device)
     domain_lossf= nn.NLLLoss().to(device)
     optimizer = optim.SGD(
@@ -105,7 +107,7 @@ def DATrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, encoded_space_di
 
             # clear the grad
             optimizer.zero_grad()
-
+            total_image = add_noise(total_image,0.3)
             reconstructed = autoencoder(total_image)
 
             loss = lossf(reconstructed, total_image)
@@ -130,3 +132,4 @@ def DATrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, encoded_space_di
             loss_arr.append(total_loss.cpu()/len(mnist_eval))
             print(f'{epoch+1}/{epochs}: avg_loss:{total_loss/len(mnist_eval)}')
     return loss_arr, autoencoder
+

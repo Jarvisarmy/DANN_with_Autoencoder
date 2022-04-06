@@ -36,7 +36,29 @@ def visualize_mnistm(loader,size):
             axes[i,j].set_title(f"Label: {temp_labels[i*4+j]}")
     plt.tight_layout()
     plt.show()
-    
+def visualize_mnist_from_DA(autoencoder,loader,size):
+    temp_iter = iter(loader)
+    temp_features, temp_labels = temp_iter.next()
+    temp_features = torch.cat((temp_features,temp_features,temp_features),1)
+    compressed_features = autoencoder(temp_features.to(device)).cpu().detach()
+    fig, axes = plt.subplots(size,size, figsize=(1.5*size,1.5*size))
+    for i in range(size):
+        for j in range(size):
+            axes[i,j].imshow(compressed_features[i*4+j].transpose(0,2).transpose(0,1))
+            axes[i,j].set_title(f"Label: {temp_labels[i*4+j]}")
+    plt.tight_layout()
+    plt.show()
+def visualize_mnistm_from_DA(autoencoder,loader,size):
+    temp_iter = iter(loader)
+    temp_features, temp_labels = temp_iter.next()
+    compressed_features = autoencoder(temp_features.to(device)).cpu().detach()
+    fig, axes = plt.subplots(size,size, figsize=(1.5*size,1.5*size))
+    for i in range(size):
+        for j in range(size):
+            axes[i,j].imshow(compressed_features[i*4+j].transpose(0,2).transpose(0,1))
+            axes[i,j].set_title(f"Label: {temp_labels[i*4+j]}")
+    plt.tight_layout()
+    plt.show()
 def visualize_domain_tSNE(domain_features, domain_labels,size=None):
     if size is not None:
         perm = torch.randperm(domain_features.size(0))

@@ -11,7 +11,7 @@ from zipfile import ZipFile
 import skimage.io
 from PIL import Image
 import seaborn as sns
-from DANN import FeatureExtractor, Classifier, Discriminator
+from DA import DenoisingAutoencoder
 from tsne_torch import TorchTSNE as TSNE
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -46,6 +46,8 @@ def save_DANN(extractor, classifier, discriminator):
     torch.save(extractor.state_dict(),"./models/extractor.pt")
     torch.save(classifier.state_dict(),"./models/classifier.pt")
     torch.save(discriminator.state_dict(),"./models/discriminator.pt")
+def save_DA(autoencoder,name):
+    torch.save(autoencoder.state_dict(),name)
 
 def load_DANN(isGPU=True):
     extractor = FeatureExtractor()
@@ -59,6 +61,16 @@ def load_DANN(isGPU=True):
     classifier.load_state_dict(torch.load("./models/classifier.pt"))
     discriminator.load_state_dict(torch.load("./models/discriminator.pt"))
     return extractor, classifier, discriminator
+def load_DA(name,isGPU=True):
+    autoencoder = DenoisingAutoencoder(100)
+    if (isGPU):
+        autoencoder = autoencoder.to(device)
+    autoencoder.load_state_dict(torch.load(name))
+    return autoencoder
+def add_noise(inputs, corruption_prob):
+    noisy_input = inputs + torch.randn_like(inputs)*corruption_prob
+    noisy_input = torch.clip(noisy_input,0.,1.)
+    return noisy_input
 
 class RunningAverageMeter(object):
     def __init__(self, momentum=0.99):
@@ -74,3 +86,5 @@ class RunningAverageMeter(object):
         else:
             self.avg = self.avg*self.momentum + val*(1-self.momentum)
         self.val = val
+        
+        

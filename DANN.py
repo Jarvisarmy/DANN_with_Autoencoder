@@ -26,9 +26,9 @@ class ReverseLayerF(torch.autograd.Function):
         output = ctx.alpha * grad_output.neg()
         return output, None
     
-class FeatureExtractor(nn.Module):
+class ConvolutionalExtractor(nn.Module):
     def __init__(self):
-        super(FeatureExtractor,self).__init__()
+        super(ConvolutionalExtractor,self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5,padding=2)
         self.bn1 = nn.BatchNorm2d(32)
         self.relu1 = nn.ReLU()
@@ -51,10 +51,24 @@ class FeatureExtractor(nn.Module):
         
         x = x.view(-1,7*7*48)
         return x
+
+class LinearExtractor(nn.Module):
+    def __init__(self,in_features):
+        super(LinearExtractor,self).__init__()
+        self.linear = nn.Sequential(
+            nn.Linear(in_features=in_features, out_features=258),
+            nn.ReLU(),
+            nn.BatchNorm1d(258),
+            nn.Linear(in_features=258,out_features=258)
+        )
+    def forward(self,x):
+        x = self.linear(x)
+        return x
+
 class Classifier(nn.Module):
-    def __init__(self):
+    def __init__(self,in_features):
         super(Classifier, self).__init__()
-        self.linear1 = nn.Linear(in_features=7*7*48, out_features=100)
+        self.linear1 = nn.Linear(in_features=in_features, out_features=100)
         self.bn1 = nn.BatchNorm1d(100)
         self.relu1= nn.ReLU()
         self.linear2 = nn.Linear(in_features=100, out_features = 100)
@@ -74,9 +88,9 @@ class Classifier(nn.Module):
         return x
     
 class Discriminator(nn.Module):
-    def __init__(self):
+    def __init__(self,in_features):
         super(Discriminator, self).__init__()
-        self.linear1 = nn.Linear(in_features=7*7*48, out_features=100)
+        self.linear1 = nn.Linear(in_features=in_features, out_features=100)
         self.bn1 = nn.BatchNorm1d(100)
         self.relu1 = nn.ReLU()
         self.linear2 = nn.Linear(in_features=100, out_features=100)

@@ -16,7 +16,7 @@ from tsne_torch import TorchTSNE as TSNE
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-
+'''
 def get_backgrounds():
     file_name = "BSDS500.zip"
     backgrounds = []
@@ -27,7 +27,13 @@ def get_backgrounds():
                 backgrounds.append(plt.imread(fp))
     return backgrounds
 
-
+'''
+def get_backgrounds():
+    backgrounds = []
+    for file in os.listdir("./images/train"):
+        if file.endswith('.jpg'):
+            backgrounds.append(plt.imread(os.path.join("./images/train",file)))
+    return backgrounds
 backgrounds = get_backgrounds()
 
 

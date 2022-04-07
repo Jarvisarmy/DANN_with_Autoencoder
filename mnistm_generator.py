@@ -38,6 +38,7 @@ backgrounds = get_backgrounds()
 
 
 def compose_image(image):
+    image = (image > 0).astype(np.float32)
     image = image.reshape([28,28])*255.0
     
     image = np.stack([image,image,image],axis=2)

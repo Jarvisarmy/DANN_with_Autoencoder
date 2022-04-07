@@ -41,14 +41,35 @@ def generate_domain_datas_from_extractor(extractor, mnist_gen,mnistm_gen):
             total_x = torch.cat((total_x,temp),0)
             total_y = torch.cat((total_y,domain_label),0)
     return total_x, total_y
+def generate_domain_datas_from_extractor_with_DA(autoencoder,extractor, mnist_gen,mnistm_gen):
+    with torch.no_grad():
+        total_x = torch.tensor([])
+        total_y = torch.tensor([])
+        for batch_idx, (source, target) in enumerate(zip(mnist_gen, mnistm_gen)):
+            source_image, source_label = source
+            target_image, target_label = target
+
+            # the source is 1 * 28 * 28, we have to preprocess it
+            source_image = torch.cat((source_image, source_image, source_image),1)
+            total_image = torch.cat((source_image, target_image), 0)
+            domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
+                                        torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
+            total_image = autoencoder.encoder(total_image.to(device))
+            temp = extractor(total_image).cpu()
+            total_x = torch.cat((total_x,temp),0)
+            total_y = torch.cat((total_y,domain_label),0)
+    return total_x, total_y
+def save_model(model, path):
+    torch.save(model.state_dict(),path)
 
 def save_DANN(extractor, classifier, discriminator):
     torch.save(extractor.state_dict(),"./models/extractor.pt")
     torch.save(classifier.state_dict(),"./models/classifier.pt")
     torch.save(discriminator.state_dict(),"./models/discriminator.pt")
-def save_DA(autoencoder,name):
-    torch.save(autoencoder.state_dict(),name)
-
+def save_DANN_with_DA(extractor, classifier, discriminator):
+    torch.save(extractor.state_dict(),"./models/extractor_da.pt")
+    torch.save(classifier.state_dict(),"./models/classifier_da.pt")
+    torch.save(discriminator.state_dict(),"./models/discriminator_da.pt")
 def load_DANN(isGPU=True):
     extractor = FeatureExtractor()
     classifier = Classifier()

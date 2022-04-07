@@ -67,6 +67,50 @@ def DANNAccuracy(extractor, classifier, discriminator, mnist_gen, mnistm_gen):
     s_acc = s_cor.item()/len(mnist_gen.dataset)
     t_acc = t_cor.item()/len(mnistm_gen.dataset)
     return s_acc, t_acc, domain_acc
+def DANNAccuracy_source_only(extractor, classifier, mnist_gen):
+    s_cor = 0
+    for batch_idx, source in enumerate(mnist_gen):
+        p = float(batch_idx)/len(mnist_gen)
+        alpha = 2. / (1.+np.exp(-10*p))-1 
+        source_image, source_label = source
+            
+        source_image = torch.cat((source_image, source_image, source_image),1)
+        
+        source_image, source_label = source_image.to(device), source_label.to(device)
+        
+        source_feature = extractor(source_image)
+        # classification loss
+        yp_s = classifier(source_feature)
+        #class_loss = lossf(yp,source_label)
+        yp_s = yp_s.data.max(1,keepdim=True)[1]
+        #print(yp)
+        s_cor += yp_s.eq(source_label.data.view_as(yp_s)).cpu().sum()
+        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
+        
+    s_acc = s_cor.item()/len(mnist_gen.dataset)
+    return s_acc
+
+def DANNAccuracy_target_only(extractor, classifier, mnistm_gen):
+    t_cor = 0
+    for batch_idx, target in enumerate(mnistm_gen):
+        p = float(batch_idx)/len(mnistm_gen)
+        alpha = 2. / (1.+np.exp(-10*p))-1 
+        target_image, target_label = target
+        
+        target_image, target_label = target_image.to(device), target_label.to(device)
+        
+        target_feature = extractor(target_image)
+        # classification loss
+        yp_t = classifier(target_feature)
+        #class_loss = lossf(yp,source_label)
+        yp_t = yp_t.data.max(1,keepdim=True)[1]
+        #print(yp)
+        t_cor += yp_t.eq(target_label.data.view_as(yp_t)).cpu().sum()
+        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
+        
+    t_acc = t_cor.item()/len(mnistm_gen.dataset)
+    return t_acc
+
 def DANNAccuracy_with_DA(autoencoder,extractor, classifier, discriminator, mnist_gen, mnistm_gen):
     s_cor = 0
     t_cor = 0

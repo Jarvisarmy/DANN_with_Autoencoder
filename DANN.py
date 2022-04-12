@@ -41,7 +41,7 @@ class DANN(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(in_features = 50*4*4, out_features = 100),
             nn.BatchNorm1d(100),
-            nn.ReLU()
+            nn.ReLU(),
             nn.Linear(in_features=100, out_features=100),
             nn.BatchNorm1d(100),
             nn.ReLU(),

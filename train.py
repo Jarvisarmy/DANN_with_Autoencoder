@@ -21,22 +21,11 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 def DANNTrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, epochs):
-    extractor = ConvolutionalExtractor().to(device)
-    classifier = Classifier(3*28*28).to(device)
-    discriminator = Discriminator(3*28*28).to(device)
-    for p in extractor.parameters():
-        p.requires_grad = True
-    for p in classifier.parameters():
-        p.requires_grad = True
-    for p in discriminator.parameters():
-        p.requires_grad = True
+    dann = DANN().to(device)
 
-    class_lossf= nn.NLLLoss().to(device)
-    domain_lossf= nn.NLLLoss().to(device)
+    criterion= nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(
-        list(extractor.parameters())+
-        list(classifier.parameters())+
-        list(discriminator.parameters()),lr=0.01,momentum=0.8)
+        list(dann.parameters()),lr=0.01)
     domain_accs =[]
     source_accs = []
     target_accs = []
@@ -52,12 +41,12 @@ def DANNTrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, epochs):
             alpha = 2. / (1.+np.exp(-10*p))-1 
 
             # the source is 1 * 28 * 28, we have to preprocess it
-            source_image = torch.cat((source_image, source_image, source_image),1)
+            #source_image = torch.cat((source_image, source_image, source_image),1)
             source_image, source_label = source_image.to(device), source_label.to(device)
             target_image, target_label = target_image.to(device), target_label.to(device)
-            total_image = torch.cat((source_image, target_image), 0)
-            domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
-                                    torch.ones(target_label.size()[0]).type(torch.LongTensor)),0).to(device)
+            #total_image = torch.cat((source_image, target_image), 0)
+            #domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
+#                                    torch.ones(target_label.size()[0]).type(torch.LongTensor)),0).to(device)
 
             # update learning rate
             for param_group in optimizer.param_groups:
@@ -65,19 +54,16 @@ def DANNTrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, epochs):
 
             # clear the grad
             optimizer.zero_grad()
+            
+            source_yp_labels, source_yp_domains = dann(source_image)
+            target_yp_labels, target_yp_domains = dann(target_image)
 
-            total_feature = extractor(total_image)
-            source_feature = extractor(source_image)
-
-            # classification loss
-            yp = classifier(source_feature)
-            class_loss = class_lossf(yp,source_label)
-
-            # domain discriminate loss
-            domain_yp = discriminator(total_feature,1)
-            domain_loss = domain_lossf(domain_yp,domain_label)
-
-            total_loss = class_loss+domain_loss
+            
+            source_labels_loss = criterion(source_yp_labels, source_label)
+            source_domain_loss = criterion(source_yp_domains, torch.zeros(source_label.size()[0]).type(torch.LongTensor).to(device))
+            target_domain_loss = criterion(target_yp_domains, torch.zeros(target_label.size()[0]).type(torch.LongTensor).to(device))
+            
+            total_loss = source_labels_loss + source_domain_loss + target_domain_loss
             total_loss.backward()
             optimizer.step()
 

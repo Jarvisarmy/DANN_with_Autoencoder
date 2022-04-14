@@ -12,20 +12,15 @@ class DenoisingAutoencoder(nn.Module):
     def __init__(self, encoded_space_dim):
         super(DenoisingAutoencoder, self).__init__()
         self.encoder = nn.Sequential(
-            # 3x28x28
-            nn.Conv2d(3,8,3,stride=2,padding=1),
-            nn.ReLU(True),
-            # 8x14x14
-            nn.Conv2d(8,16,3, stride=2,padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(True),
-            # 16x7x7
-            #nn.Conv2d(16,32, 3, stride=2, padding=0),
-            #nn.ReLU(True),
-            nn.Flatten(),
-            #nn.Linear(3*3*32, 128),
-            #nn.ReLU(True),
-            #nn.Linear(128, encoded_space_dim)
+            nn.Conv2d(in_channels=3, out_channels=3, kernel_size=3,padding=1),
+            nn.BatchNorm2d(3),
+            nn.ReLU(),
+            nn.Conv2d(in_channels=3, out_channels=3,kernel_size=3,padding=1),
+            # 50 x 8 x 8
+            nn.BatchNorm2d(3),
+            nn.ReLU(),
+            nn.Sigmoid()
+            #nn.Flatten()
         )
 
         self.decoder = nn.Sequential(
@@ -33,17 +28,18 @@ class DenoisingAutoencoder(nn.Module):
             #nn.ReLU(True),
             #nn.Linear(128, 3*3*32),
             #nn.ReLU(True),
-            nn.Unflatten(dim=1,unflattened_size=(16,7,7)),
+            #nn.Unflatten(dim=1,unflattened_size=(16,4,4)),
             #nn.ConvTranspose2d(32,16,3,stride=2, output_padding=0),
             #nn.BatchNorm2d(16),
             #nn.ReLU(True),
-            nn.ConvTranspose2d(16,8,3, stride=2,padding=1,output_padding=1),
-            nn.BatchNorm2d(8),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(8,3,3,stride=2,padding=1,output_padding=1),
+            nn.ConvTranspose2d(3,3,3,padding=1),
+            nn.BatchNorm2d(3),
+            nn.ReLU(),
+            nn.ConvTranspose2d(3,3,3,padding=1),
             nn.Sigmoid()
         )
     def forward(self, x):
+        x = x.expand(x.data.shape[0],3,28,28)
         x = self.encoder(x)
         x = self.decoder(x)
         return x

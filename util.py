@@ -13,6 +13,7 @@ from PIL import Image
 import seaborn as sns
 from DA import DenoisingAutoencoder
 from tsne_torch import TorchTSNE as TSNE
+from DANN import DANN
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -23,7 +24,7 @@ def generate_domain_datas(mnist_gen,mnistm_gen):
                   torch.tensor([0 for x in mnistm_gen.dataset])],axis=0).to(device)
     return total_x, total_y
 
-def generate_domain_datas_from_extractor(extractor, mnist_gen,mnistm_gen):
+def generate_domain_datas_from_dann(dann, mnist_gen,mnistm_gen):
     with torch.no_grad():
         total_x = torch.tensor([])
         total_y = torch.tensor([])
@@ -32,16 +33,21 @@ def generate_domain_datas_from_extractor(extractor, mnist_gen,mnistm_gen):
             target_image, target_label = target
 
             # the source is 1 * 28 * 28, we have to preprocess it
-            source_image = torch.cat((source_image, source_image, source_image),1)
-            total_image = torch.cat((source_image, target_image), 0)
+            #source_image = torch.cat((source_image, source_image, source_image),1)
+
             domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
                                         torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
-            
-            temp = extractor(total_image.to(device)).cpu()
+            source = source_image.expand(source_image.data.shape[0],3,28,28)
+            source = dann.extractor(source.to(device))
+            source = source.view(-1,64*4*4).cpu()
+            target = target_image.expand(target_image.data.shape[0],3,28,28)
+            target = dann.extractor(target.to(device))
+            target = target.view(-1,64*4*4).cpu()
+            temp = torch.cat((source,target),0)
             total_x = torch.cat((total_x,temp),0)
             total_y = torch.cat((total_y,domain_label),0)
     return total_x, total_y
-def generate_domain_datas_from_extractor_with_DA(autoencoder,extractor, mnist_gen,mnistm_gen):
+def generate_domain_datas_from_extractor_with_DA(dann,autoencoder, mnist_gen,mnistm_gen):
     with torch.no_grad():
         total_x = torch.tensor([])
         total_y = torch.tensor([])
@@ -50,38 +56,31 @@ def generate_domain_datas_from_extractor_with_DA(autoencoder,extractor, mnist_ge
             target_image, target_label = target
 
             # the source is 1 * 28 * 28, we have to preprocess it
-            source_image = torch.cat((source_image, source_image, source_image),1)
-            total_image = torch.cat((source_image, target_image), 0)
+            #source_image = torch.cat((source_image, source_image, source_image),1)
+
             domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
                                         torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
-            total_image = autoencoder.encoder(total_image.to(device))
-            temp = extractor(total_image).cpu()
+            source = source_image.expand(source_image.data.shape[0],3,28,28)
+            source = autoencoder.encoder(source.to(device))
+            source = dann.extractor(source.to(device))
+            source = source.view(-1,64*4*4).cpu()
+            target = target_image.expand(target_image.data.shape[0],3,28,28)
+            target = autoencoder.encoder(target.to(device))
+            target = dann.extractor(target.to(device))
+            target = target.view(-1,64*4*4).cpu()
+            temp = torch.cat((source,target),0)
             total_x = torch.cat((total_x,temp),0)
             total_y = torch.cat((total_y,domain_label),0)
     return total_x, total_y
 def save_model(model, path):
     torch.save(model.state_dict(),path)
 
-def save_DANN(extractor, classifier, discriminator):
-    torch.save(extractor.state_dict(),"./models/extractor.pt")
-    torch.save(classifier.state_dict(),"./models/classifier.pt")
-    torch.save(discriminator.state_dict(),"./models/discriminator.pt")
-def save_DANN_with_DA(extractor, classifier, discriminator):
-    torch.save(extractor.state_dict(),"./models/extractor_da.pt")
-    torch.save(classifier.state_dict(),"./models/classifier_da.pt")
-    torch.save(discriminator.state_dict(),"./models/discriminator_da.pt")
-def load_DANN(isGPU=True):
-    extractor = FeatureExtractor()
-    classifier = Classifier()
-    discriminator = Discriminator()
+def load_DANN(name,isGPU=True):
+    dann = DANN()
     if (isGPU):
-        extractor = extractor.to(device)
-        classifier = classifier.to(device)
-        discriminator = discriminator.to(device)
-    extractor.load_state_dict(torch.load("./models/extractor.pt"))
-    classifier.load_state_dict(torch.load("./models/classifier.pt"))
-    discriminator.load_state_dict(torch.load("./models/discriminator.pt"))
-    return extractor, classifier, discriminator
+        dann = dann.to(device)
+    dann.load_state_dict(torch.load(name))
+    return dann
 def load_DA(name,isGPU=True):
     autoencoder = DenoisingAutoencoder(100)
     if (isGPU):

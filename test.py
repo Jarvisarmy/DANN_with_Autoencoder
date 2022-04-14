@@ -15,7 +15,7 @@ from sklearn.manifold import TSNE
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-def DANNAccuracy(extractor, classifier, discriminator, mnist_gen, mnistm_gen):
+def DANNAccuracy(dann, mnist_gen, mnistm_gen):
     s_cor = 0
     t_cor = 0
     domain_cor = 0
@@ -24,146 +24,48 @@ def DANNAccuracy(extractor, classifier, discriminator, mnist_gen, mnistm_gen):
         alpha = 2. / (1.+np.exp(-10*p))-1 
         source_image, source_label = source
         target_image, target_label = target
-            
-        source_image = torch.cat((source_image, source_image, source_image),1)
         
         source_image, source_label = source_image.to(device), source_label.to(device)
         target_image, target_label = target_image.to(device), target_label.to(device)
-        total_image = torch.cat((source_image, target_image), 0)
         
-        domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
-                                torch.ones(target_label.size()[0]).type(torch.LongTensor)),0).to(device)
                 
-        total_feature = extractor(total_image)
-        source_feature = extractor(source_image)
-        target_feature = extractor(target_image)
-        # classification loss
-        yp_s = classifier(source_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_s = yp_s.data.max(1,keepdim=True)[1]
-        #print(yp)
-        s_cor += yp_s.eq(source_label.data.view_as(yp_s)).cpu().sum()
-        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
+        source_yp_labels, source_yp_domains = dann(source_image,alpha)
+        target_yp_labels, target_yp_domains = dann(target_image, alpha)
         
-        yp_t = classifier(target_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_t = yp_t.data.max(1,keepdim=True)[1]
-        #print(yp)
-        t_cor += yp_t.eq(target_label.data.view_as(yp_t)).cpu().sum()
+        source_yp_labels = source_yp_labels.data.max(1,keepdim=True)[1]
+        s_cor += source_yp_labels.eq(source_label.data.view_as(source_yp_labels)).cpu().sum()
         
-        # domain discriminate loss
-        domain_yp = discriminator(total_feature,alpha)
-        #domain_loss = lossf(domain_yp,domain_label)
-        domain_yp = domain_yp.data.max(1,keepdim=True)[1]
-        domain_cor += domain_yp.eq(domain_label.data.view_as(domain_yp)).cpu().sum()
-        #print(domain_yp.eq(domain_label.data.view_as(domain_yp)).cpu().sum())
-            
-        #domain_loss_avg.update(domain_loss)
-        #classifier_loss_avg.update(class_loss)
-            
-    #domain_losses.append(-domain_loss_avg.avg.cpu().item())
-    #classifier_losses.append(-classifier_loss_avg.avg.cpu().item())
+        target_yp_labels = target_yp_labels.data.max(1,keepdim=True)[1]
+        t_cor += target_yp_labels.eq(target_label.data.view_as(target_yp_labels)).cpu().sum()
+        
+        source_y_domains = torch.zeros(source_label.size()[0]).type(torch.LongTensor).to(device)
+        target_y_domains =  torch.ones(target_label.size()[0]).type(torch.LongTensor).to(device)
+        
+        source_yp_domains = source_yp_domains.data.max(1,keepdim=True)[1]
+        domain_cor += source_yp_domains.eq(source_y_domains.data.view_as(source_yp_domains)).cpu().sum()
+        target_yp_domains = target_yp_domains.data.max(1,keepdim=True)[1]
+        domain_cor += target_yp_domains.eq(target_y_domains.data.view_as(target_yp_domains)).cpu().sum()
+
     domain_acc = domain_cor.item()/(len(mnist_gen.dataset)+len(mnistm_gen.dataset))
     s_acc = s_cor.item()/len(mnist_gen.dataset)
     t_acc = t_cor.item()/len(mnistm_gen.dataset)
+    
     return s_acc, t_acc, domain_acc
-def DANNAccuracy_source_only(extractor, classifier, mnist_gen):
+def DANNAccuracy_source_only(dann, mnist_gen):
     s_cor = 0
-    for batch_idx, source in enumerate(mnist_gen):
+    for batch_idx,source in enumerate(mnist_gen):
         p = float(batch_idx)/len(mnist_gen)
         alpha = 2. / (1.+np.exp(-10*p))-1 
         source_image, source_label = source
-            
-        source_image = torch.cat((source_image, source_image, source_image),1)
         
         source_image, source_label = source_image.to(device), source_label.to(device)
         
-        source_feature = extractor(source_image)
-        # classification loss
-        yp_s = classifier(source_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_s = yp_s.data.max(1,keepdim=True)[1]
-        #print(yp)
-        s_cor += yp_s.eq(source_label.data.view_as(yp_s)).cpu().sum()
-        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
+                
+        source_yp_labels, source_yp_domains = dann(source_image,alpha)
         
+        source_yp_labels = source_yp_labels.data.max(1,keepdim=True)[1]
+        s_cor += source_yp_labels.eq(source_label.data.view_as(source_yp_labels)).cpu().sum()
+
     s_acc = s_cor.item()/len(mnist_gen.dataset)
+    
     return s_acc
-
-def DANNAccuracy_target_only(extractor, classifier, mnistm_gen):
-    t_cor = 0
-    for batch_idx, target in enumerate(mnistm_gen):
-        p = float(batch_idx)/len(mnistm_gen)
-        alpha = 2. / (1.+np.exp(-10*p))-1 
-        target_image, target_label = target
-        
-        target_image, target_label = target_image.to(device), target_label.to(device)
-        
-        target_feature = extractor(target_image)
-        # classification loss
-        yp_t = classifier(target_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_t = yp_t.data.max(1,keepdim=True)[1]
-        #print(yp)
-        t_cor += yp_t.eq(target_label.data.view_as(yp_t)).cpu().sum()
-        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
-        
-    t_acc = t_cor.item()/len(mnistm_gen.dataset)
-    return t_acc
-
-def DANNAccuracy_with_DA(autoencoder,extractor, classifier, discriminator, mnist_gen, mnistm_gen):
-    s_cor = 0
-    t_cor = 0
-    domain_cor = 0
-    for batch_idx, (source, target) in enumerate(zip(mnist_gen, mnistm_gen)):
-        p = float(batch_idx)/len(mnist_gen)
-        alpha = 2. / (1.+np.exp(-10*p))-1 
-        source_image, source_label = source
-        target_image, target_label = target
-            
-        source_image = torch.cat((source_image, source_image, source_image),1)
-        
-        source_image, source_label = source_image.to(device), source_label.to(device)
-        target_image, target_label = target_image.to(device), target_label.to(device)
-        total_image = torch.cat((source_image, target_image), 0)
-        
-        domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
-                                torch.ones(target_label.size()[0]).type(torch.LongTensor)),0).to(device)
-        
-        total_image = autoencoder.encoder(total_image)
-        source_image = autoencoder.encoder(source_image)
-        target_image = autoencoder.encoder(target_image)
-        
-        total_feature = extractor(total_image)
-        source_feature = extractor(source_image)
-        target_feature = extractor(target_image)
-        # classification loss
-        yp_s = classifier(source_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_s = yp_s.data.max(1,keepdim=True)[1]
-        #print(yp)
-        s_cor += yp_s.eq(source_label.data.view_as(yp_s)).cpu().sum()
-        #print(yp.eq(source_label.data.view_as(yp)).cpu().sum())
-        
-        yp_t = classifier(target_feature)
-        #class_loss = lossf(yp,source_label)
-        yp_t = yp_t.data.max(1,keepdim=True)[1]
-        #print(yp)
-        t_cor += yp_t.eq(target_label.data.view_as(yp_t)).cpu().sum()
-        
-        # domain discriminate loss
-        domain_yp = discriminator(total_feature,alpha)
-        #domain_loss = lossf(domain_yp,domain_label)
-        domain_yp = domain_yp.data.max(1,keepdim=True)[1]
-        domain_cor += domain_yp.eq(domain_label.data.view_as(domain_yp)).cpu().sum()
-        #print(domain_yp.eq(domain_label.data.view_as(domain_yp)).cpu().sum())
-            
-        #domain_loss_avg.update(domain_loss)
-        #classifier_loss_avg.update(class_loss)
-            
-    #domain_losses.append(-domain_loss_avg.avg.cpu().item())
-    #classifier_losses.append(-classifier_loss_avg.avg.cpu().item())
-    domain_acc = domain_cor.item()/(len(mnist_gen.dataset)+len(mnistm_gen.dataset))
-    s_acc = s_cor.item()/len(mnist_gen.dataset)
-    t_acc = t_cor.item()/len(mnistm_gen.dataset)
-    return s_acc, t_acc, domain_acc

@@ -27,28 +27,36 @@ class ReverseLayerF(torch.autograd.Function):
         return output, None
     
 class DANN(nn.Module):
-    def __init__(self):
-        super(ConvolutionalExtractor,self).__init__()
+    def __init__(self,out_dim=64*4*4):
+        super(DANN,self).__init__()
+        self.out_dim = out_dim
         self.extractor = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=64, kernel_size=5),
+            # 3 x 28 x 28
+            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=5),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            # 64 x 24 x 24
+            nn.MaxPool2d(kernel_size=2),
+            # 64 x 12 x 12
+            nn.Conv2d(in_channels=32, out_channels=64,kernel_size=5),
+            # 50 x 8 x 8
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Conv2d(in_channels=64, out_channels=50,kernel_size=5),
-            nn.BatchNorm2d(50),
-            nn.ReLU(),
+            nn.Dropout2d(),
             nn.MaxPool2d(kernel_size=2))
+            # 50 x 4 x 4
         self.classifier = nn.Sequential(
-            nn.Linear(in_features = 50*4*4, out_features = 100),
+            nn.Linear(in_features = out_dim, out_features = 100),
             nn.BatchNorm1d(100),
             nn.ReLU(),
+            nn.Dropout(),
             nn.Linear(in_features=100, out_features=100),
             nn.BatchNorm1d(100),
             nn.ReLU(),
             nn.Linear(in_features = 100, out_features=10),
             nn.LogSoftmax(dim=1))
         self.discriminator = nn.Sequential(
-            nn.Linear(in_features=50*4*4, out_features=100),
+            nn.Linear(in_features=out_dim, out_features=100),
             nn.BatchNorm1d(100),
             nn.ReLU(),
             nn.Linear(in_features=100, out_features=2),
@@ -58,12 +66,11 @@ class DANN(nn.Module):
     def forward(self,x,alpha):
         x = x.expand(x.data.shape[0],3,28,28)
         x = self.extractor(x)
-        x = x.view(-1,50*4*4)
+        x = x.view(-1,self.out_dim)
         rev_x = ReverseLayerF.apply(x,alpha)
         labels = self.classifier(x)
         domains = self.discriminator(rev_x)
         return labels, domains
-
 
 class LinearExtractor(nn.Module):
     def __init__(self,in_features):

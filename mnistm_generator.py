@@ -11,6 +11,7 @@ from zipfile import ZipFile
 import skimage.io
 from PIL import Image
 import seaborn as sns
+import random
 
 from tsne_torch import TorchTSNE as TSNE
 
@@ -43,7 +44,7 @@ def compose_image(image):
     
     image = np.stack([image,image,image],axis=2)
     
-    background = np.random.choice(backgrounds)
+    background = random.choice(backgrounds)
     w,h,_ = background.shape
     dw, dh,_ = image.shape
     x = np.random.randint(0,w-dw)

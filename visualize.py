@@ -40,7 +40,11 @@ def visualize_from_DA(autoencoder,loader,size):
     temp_iter = iter(loader)
     temp_features, temp_labels = temp_iter.next()
     temp_features = temp_features.expand(temp_features.data.shape[0],3,28,28)
-    compressed_features = autoencoder(temp_features.to(device)).cpu().detach()
+    compressed_features = autoencoder.encoder(temp_features.to(device)).cpu().detach()
+    #print(compressed_features.size())
+    
+    compressed_features = (compressed_features - compressed_features.min())*(1/(compressed_features.max()-compressed_features.min()))
+    compressed_features = compressed_features.expand(compressed_features.data.shape[0],3,28,28)
     fig, axes = plt.subplots(size,size, figsize=(1.5*size,1.5*size))
     for i in range(size):
         for j in range(size):

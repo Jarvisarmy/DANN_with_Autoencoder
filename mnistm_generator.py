@@ -63,13 +63,23 @@ class MNISTM(Dataset):
             self.data = datasets.MNIST(root='.data/mnist',train=False, download=True)
         self.backgrounds = get_backgrounds()
         self.transform = transform
+        self.images = []
+        self.targets = []
+        for index in range(len(self.data)):
+            image = np.array(self.data.__getitem__(index)[0])
+            target = self.data.__getitem__(index)[1]
+            image = compose_image(image)
+            if self.transform is not None:
+                image = self.transform(image)
+            self.images.append(image)
+            self.targets.append(target)
+        
     def __getitem__(self,index):
-        image = np.array(self.data.__getitem__(index)[0])
-        target = self.data.__getitem__(index)[1]
-        image = compose_image(image)
+        
         #image = Image.fromarray(image.squeeze(), mode="RGB")
-        if self.transform is not None:
-            image = self.transform(image)
+        image = self.images[index]
+        target = self.targets[index]
+        
         return image, target
         
     def __len__(self):
@@ -96,3 +106,7 @@ def get_mnistm_loaders(data_aug = False, batch_size=128,test_batch_size=1000):
     test_loader = DataLoader(
         MNISTM(train=False,transform=test_transform),batch_size=test_batch_size, shuffle=False, drop_last=True)
     return train_loader, train_eval_loader, test_loader
+
+
+
+

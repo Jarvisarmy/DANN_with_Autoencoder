@@ -39,15 +39,44 @@ def generate_domain_datas_from_dann(dann, mnist_gen,mnistm_gen):
                                         torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
             source = source_image.expand(source_image.data.shape[0],3,28,28)
             source = dann.extractor(source.to(device))
-            source = source.view(-1,64*4*4).cpu()
+            source = source.view(-1,50*4*4).cpu()
             target = target_image.expand(target_image.data.shape[0],3,28,28)
             target = dann.extractor(target.to(device))
-            target = target.view(-1,64*4*4).cpu()
+            target = target.view(-1,50*4*4).cpu()
             temp = torch.cat((source,target),0)
             total_x = torch.cat((total_x,temp),0)
             total_y = torch.cat((total_y,domain_label),0)
     return total_x, total_y
 def generate_domain_datas_from_extractor_with_DA(dann,autoencoder, mnist_gen,mnistm_gen):
+    with torch.no_grad():
+        total_x = torch.tensor([])
+        total_y = torch.tensor([])
+        for batch_idx, (source, target) in enumerate(zip(mnist_gen, mnistm_gen)):
+            source_image, source_label = source
+            target_image, target_label = target
+            source_image, source_label = source_image.to(device), source_label.to(device)
+            target_image, target_label = target_image.to(device), target_label.to(device)
+
+            # the source is 1 * 28 * 28, we have to preprocess it
+            #source_image = torch.cat((source_image, source_image, source_image),1)
+
+            domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
+                                        torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
+            source = source_image.expand(source_image.data.shape[0],3,28,28)
+            robust_source = autoencoder(source.to(device))
+            source = torch.cat((source,robust_source), 1)
+            source = dann.extractor(source).cpu()
+            source = source.view(-1,50*4*4)
+            target = target_image.expand(target_image.data.shape[0],3,28,28)
+            robust_target = autoencoder(target.to(device))
+            target = torch.cat((target,robust_target), 1)
+            target = dann.extractor(target).cpu()
+            target = target.view(-1,50*4*4)
+            temp = torch.cat((source,target),0)
+            total_x = torch.cat((total_x,temp),0)
+            total_y = torch.cat((total_y,domain_label),0)
+    return total_x, total_y
+def generate_domain_datas_DA(autoencoder, mnist_gen,mnistm_gen):
     with torch.no_grad():
         total_x = torch.tensor([])
         total_y = torch.tensor([])
@@ -61,13 +90,18 @@ def generate_domain_datas_from_extractor_with_DA(dann,autoencoder, mnist_gen,mni
             domain_label = torch.cat((torch.zeros(source_label.size()[0]).type(torch.LongTensor),
                                         torch.ones(target_label.size()[0]).type(torch.LongTensor)),0)
             source = source_image.expand(source_image.data.shape[0],3,28,28)
-            source = autoencoder.encoder(source.to(device))
-            source = dann.extractor(source.to(device))
-            source = source.view(-1,64*4*4).cpu()
+            
+            source = autoencoder(source.to(device))
+            #source = source.expand(source.data.shape[0],3,28,28).cpu()
+            #source = (source - source.min())*(1/(source.max()-source.min()))
+            #source = dann.extractor(source.to(device))
+            source = source.view(-1,3*28*28).cpu()
             target = target_image.expand(target_image.data.shape[0],3,28,28)
-            target = autoencoder.encoder(target.to(device))
-            target = dann.extractor(target.to(device))
-            target = target.view(-1,64*4*4).cpu()
+            target = autoencoder(target.to(device))
+            #target = target.expand(target.data.shape[0],3,28,28).cpu()
+            #target = (target - target.min())*(1/(target.max()-target.min()))
+            #target = dann.extractor(target.to(device))
+            target = target.view(-1,3*28*28).cpu()
             temp = torch.cat((source,target),0)
             total_x = torch.cat((total_x,temp),0)
             total_y = torch.cat((total_y,domain_label),0)

@@ -15,11 +15,11 @@ class DenoisingAutoencoder(nn.Module):
             nn.Conv2d(in_channels=3, out_channels=3, kernel_size=3,padding=1),
             nn.BatchNorm2d(3),
             nn.ReLU(),
-            nn.Conv2d(in_channels=3, out_channels=3,kernel_size=3,padding=1),
+            nn.Conv2d(in_channels=3, out_channels=1,kernel_size=3,padding=1),
             # 50 x 8 x 8
-            nn.BatchNorm2d(3),
-            nn.ReLU(),
-            nn.Sigmoid()
+            #nn.BatchNorm2d(1),
+            #nn.ReLU(),
+            #nn.Sigmoid()
             #nn.Flatten()
         )
 
@@ -32,7 +32,7 @@ class DenoisingAutoencoder(nn.Module):
             #nn.ConvTranspose2d(32,16,3,stride=2, output_padding=0),
             #nn.BatchNorm2d(16),
             #nn.ReLU(True),
-            nn.ConvTranspose2d(3,3,3,padding=1),
+            nn.ConvTranspose2d(1,3,3,padding=1),
             nn.BatchNorm2d(3),
             nn.ReLU(),
             nn.ConvTranspose2d(3,3,3,padding=1),

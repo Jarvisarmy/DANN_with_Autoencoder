@@ -73,5 +73,6 @@ def visualize_domain_tSNE(domain_features, domain_labels,size=None):
                verbose=0,
                n_jobs=-1,
                square_distances=True)
+    #tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=3000)
     tSNE_embedding = tSNE.fit_transform(domain_features.cpu().detach().numpy())
     sns.scatterplot(x=tSNE_embedding[:,0],y=tSNE_embedding[:,1],hue=domain_labels.cpu().detach().numpy())

@@ -11,6 +11,9 @@ from zipfile import ZipFile
 import skimage.io
 from PIL import Image
 import seaborn as sns
+import random
+import umap
+from itertools import product
 
 from sklearn.manifold import TSNE
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -40,7 +43,7 @@ def visualize_from_DA(autoencoder,loader,size):
     temp_iter = iter(loader)
     temp_features, temp_labels = temp_iter.next()
     temp_features = temp_features.expand(temp_features.data.shape[0],3,28,28)
-    compressed_features = autoencoder.encoder(temp_features.to(device)).cpu().detach()
+    compressed_features = autoencoder(temp_features.to(device)).cpu().detach()
     #print(compressed_features.size())
     
     compressed_features = (compressed_features - compressed_features.min())*(1/(compressed_features.max()-compressed_features.min()))
@@ -76,3 +79,23 @@ def visualize_domain_tSNE(domain_features, domain_labels,size=None):
     #tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=3000)
     tSNE_embedding = tSNE.fit_transform(domain_features.cpu().detach().numpy())
     sns.scatterplot(x=tSNE_embedding[:,0],y=tSNE_embedding[:,1],hue=domain_labels.cpu().detach().numpy())
+    
+def visualize_domain_UMAP(domain_features, domain_labels,name="umap plot",size=None):
+    sns.set_style('white')
+    if size is not None:
+        perm = torch.randperm(domain_features.size(0))
+        idx = perm[:size]
+        domain_features = domain_features.cpu()[idx]
+        domain_labels = domain_labels.cpu()[idx]
+    else:
+        domain_features = domain_features.cpu()
+        domain_labels = domain_labels.cpu()
+    reducer = umap.UMAP(
+                    n_components=2,
+                    random_state=2022,
+                    verbose=False)
+    #tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=3000)
+    umap_embedding = reducer.fit_transform(domain_features.cpu().detach().numpy())
+    sns.scatterplot(x=umap_embedding[:,0],y=umap_embedding[:,1],hue=domain_labels.cpu().detach().numpy())
+    plt.title(name)
+    plt.show()

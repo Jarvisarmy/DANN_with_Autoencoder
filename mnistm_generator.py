@@ -100,11 +100,11 @@ def get_mnistm_loaders(data_aug = False, batch_size=128,test_batch_size=1000):
         transforms.ToTensor()
     ])
     train_loader = DataLoader(
-        MNISTM(train=True,transform=train_transform),batch_size=batch_size, shuffle=True,drop_last=True)
+        MNISTM(train=True,transform=train_transform),batch_size=batch_size, shuffle=True,drop_last=False)
     train_eval_loader = DataLoader(
-        MNISTM(train=True, transform=test_transform),batch_size=test_batch_size, shuffle=False, drop_last=True)
+        MNISTM(train=True, transform=test_transform),batch_size=test_batch_size, shuffle=False, drop_last=False)
     test_loader = DataLoader(
-        MNISTM(train=False,transform=test_transform),batch_size=test_batch_size, shuffle=False, drop_last=True)
+        MNISTM(train=False,transform=test_transform),batch_size=test_batch_size, shuffle=False, drop_last=False)
     return train_loader, train_eval_loader, test_loader
 
 

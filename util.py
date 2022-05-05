@@ -14,14 +14,16 @@ import seaborn as sns
 from DA import DenoisingAutoencoder
 from tsne_torch import TorchTSNE as TSNE
 from DANN import DANN
+from sklearn import svm
+
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def generate_domain_datas(mnist_gen,mnistm_gen):
     total_x = torch.cat([torch.stack([torch.cat((x[0],x[0],x[0]),0) for x in mnist_gen.dataset],axis=0).view(60000,-1),
                   torch.stack([x[0] for x in mnistm_gen.dataset],axis=0).view(60000,-1)],axis=0).to(device)
-    total_y = torch.cat([torch.tensor([1 for x in mnist_gen.dataset]),
-                  torch.tensor([0 for x in mnistm_gen.dataset])],axis=0).to(device)
+    total_y = torch.cat([torch.tensor([0 for x in mnist_gen.dataset]),
+                  torch.tensor([1 for x in mnistm_gen.dataset])],axis=0).to(device)
     return total_x, total_y
 
 def generate_domain_datas_from_dann(dann, mnist_gen,mnistm_gen):
@@ -115,6 +117,7 @@ def load_DANN(name,isGPU=True):
         dann = dann.to(device)
     dann.load_state_dict(torch.load(name))
     return dann
+
 def load_DA(name,isGPU=True):
     autoencoder = DenoisingAutoencoder(100)
     if (isGPU):
@@ -140,5 +143,18 @@ class RunningAverageMeter(object):
         else:
             self.avg = self.avg*self.momentum + val*(1-self.momentum)
         self.val = val
+
+def Proxy_A_distance(features, labels):
+    index = np.random.randint(0,120000,20000)
+    x_train = features[index[:10000]]
+    y_train = labels[index[:10000]]
+    x_test = features[index[10000:]]
+    y_test = labels[index[10000:]]
+    clf = svm.SVC()
+    clf.fit(x_train,y_train)
+    predicted = clf.predict(x_test)
+    err = np.mean(np.abs(predicted-y_test))
+    proxy = 2*(1-2*err)
+    return proxy
         
         

@@ -70,7 +70,7 @@ def DANNTrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, epochs,interva
                 print(f'{epoch+1}/{epochs}: source_acc: {source_acc},target_acc: {target_acc}, domain_acc: {domain_acc}')
     return source_accs, target_accs, domain_accs, dann
             
-def DANNTrain_source_only(mnist_train,mnist_eval,epochs):
+def DANNTrain_source_only(mnist_train,mnist_eval,epochs,intervals):
     dann = DANN().to(device)
 
     criterion= nn.CrossEntropyLoss().to(device)
@@ -104,13 +104,13 @@ def DANNTrain_source_only(mnist_train,mnist_eval,epochs):
             total_loss = source_labels_loss
             total_loss.backward()
             optimizer.step()
-
-        with torch.no_grad():
-            source_acc  = DANNAccuracy_source_only(dann, mnist_eval)
-            source_accs.append(source_acc)
-            print(f'{epoch+1}/{epochs}: source_acc: {source_acc}')
+        if (epoch+1) % intervals == 0:
+            with torch.no_grad():
+                source_acc = DANNAccuracy_source_only(dann, mnist_eval)
+                source_accs.append(source_acc)
+                print(f'{epoch+1}/{epochs}: source_acc: {source_acc}')
     return source_accs, dann
-def DANNTrain_classify_only(mnist_train,mnist_eval,mnistm_train,mnistm_eval,epochs):
+def DANNTrain_classify_only(mnist_train,mnist_eval,mnistm_train,mnistm_eval,epochs,intervals):
     dann = DANN().to(device)
 
     criterion= nn.CrossEntropyLoss().to(device)
@@ -147,12 +147,12 @@ def DANNTrain_classify_only(mnist_train,mnist_eval,mnistm_train,mnistm_eval,epoc
             total_loss = source_labels_loss + target_labels_loss
             total_loss.backward()
             optimizer.step()
-
-        with torch.no_grad():
-            source_acc, target_acc  = DANNAccuracy_classify_only(dann, mnist_eval,mnistm_eval)
-            source_accs.append(source_acc)
-            target_accs.append(target_acc)
-            print(f'{epoch+1}/{epochs}: source_acc: {source_acc}, target_acc {target_acc}')
+        if (epoch+1) % intervals == 0:
+            with torch.no_grad():
+                source_acc, target_acc  = DANNAccuracy_classify_only(dann, mnist_eval,mnistm_eval)
+                source_accs.append(source_acc)
+                target_accs.append(target_acc)
+                print(f'{epoch+1}/{epochs}: source_acc: {source_acc}, target_acc {target_acc}')
     return source_accs, target_accs, dann
     
 def DATrain(mnist_train, mnistm_train, mnist_eval, mnistm_eval, encoded_space_dim, epochs,intervals=20):

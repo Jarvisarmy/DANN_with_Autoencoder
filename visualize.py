@@ -98,4 +98,5 @@ def visualize_domain_UMAP(domain_features, domain_labels,name="umap plot",size=N
     umap_embedding = reducer.fit_transform(domain_features.cpu().detach().numpy())
     sns.scatterplot(x=umap_embedding[:,0],y=umap_embedding[:,1],hue=domain_labels.cpu().detach().numpy())
     plt.title(name)
+    plt.savefig("./plots/"+name+".png")
     plt.show()

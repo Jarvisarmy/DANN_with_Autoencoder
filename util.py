@@ -144,17 +144,20 @@ class RunningAverageMeter(object):
             self.avg = self.avg*self.momentum + val*(1-self.momentum)
         self.val = val
 
-def Proxy_A_distance(features, labels):
-    index = np.random.randint(0,120000,20000)
-    x_train = features[index[:10000]]
-    y_train = labels[index[:10000]]
-    x_test = features[index[10000:]]
-    y_test = labels[index[10000:]]
-    clf = svm.SVC()
-    clf.fit(x_train,y_train)
-    predicted = clf.predict(x_test)
-    err = np.mean(np.abs(predicted-y_test))
-    proxy = 2*(1-2*err)
-    return proxy
+def Proxy_A_distance(features, labels, epochs):
+    total_proxy = 0
+    for i in range(epochs):
+        index = np.random.randint(0,120000,20000)
+        x_train = features[index[:10000]]
+        y_train = labels[index[:10000]]
+        x_test = features[index[10000:]]
+        y_test = labels[index[10000:]]
+        clf = svm.SVC()
+        clf.fit(x_train,y_train)
+        predicted = clf.predict(x_test)
+        err = np.mean(np.abs(predicted-y_test))
+        proxy = 2*(1-2*err)
+        total_proxy += proxy
+    return total_proxy/epochs
         
         
